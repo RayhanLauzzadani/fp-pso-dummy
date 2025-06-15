@@ -7,9 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  test:               
+  lint_and_test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -34,6 +33,21 @@ jobs:
       - name: Disable Babel for Next.js build
         run: mv babel.config.js babel.config.js.bak
 
+  build:
+    runs-on: ubuntu-latest
+    needs: lint_and_test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
       - name: Build Next.js
         run: npm run build
         env:
@@ -44,6 +58,27 @@ jobs:
           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
           NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
           NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID }}
+
+  sonarcloud:
+    runs-on: ubuntu-latest
+    needs: lint_and_test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Enable Babel for Jest
+        run: mv babel.config.js.bak babel.config.js
+
+      - name: Run Unit Tests (for coverage report)
+        run: npm run test -- --coverage
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
